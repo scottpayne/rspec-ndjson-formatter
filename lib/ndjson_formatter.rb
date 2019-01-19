@@ -52,6 +52,17 @@ class NdjsonFormatter
     @io << %("children": [)
   end
 
+  def example_started(example_notification)
+    ex = example_notification.example
+    @io << "{"
+    @io << %("id": "#{ex.id}", )
+    @io << %("type": "test", )
+    @io << %("label": "#{ex.description}", )
+    @io << %("file": "#{ex.file_path}", )
+    @io << %("line": #{ex.metadata[:line_number]} )
+    @io << "}"
+  end
+
   def stop(_arg)
     close_all_that_need_closing
   end
