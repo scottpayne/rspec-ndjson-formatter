@@ -9,6 +9,37 @@ class NdjsonFormatter
     @testables = {}
   end
 
+  def example_group_started(group_notification)
+    group = group_notification.group
+    insert_testable({
+      id: group.id,
+      type: "suite",
+      label: group.description,
+      file: group.file_path,
+      line: group.metadata[:line_number].to_i,
+      children: [],
+      parent_id: group_parent_id(group),
+    })
+  end
+
+  def example_started(example_notification)
+    ex = example_notification.example
+    insert_testable({
+      id: ex.id,
+      type: "test",
+      label: ex.description,
+      file: ex.file_path,
+      line: ex.metadata[:line_number],
+      parent_id: example_parent_id(ex),
+    })
+  end
+
+  def stop(_arg)
+    dump
+  end
+
+  private
+
   def dump
     @io.puts JSON.dump(@top_level)
   end
@@ -45,44 +76,5 @@ class NdjsonFormatter
   def group_parent_id(testable = nil)
     return if testable.nil?
     format_id(testable.metadata[:parent_example_group])
-  end
-
-  def close_all_that_need_closing(parent_id = nil)
-    @ancestors.reverse.each do |closer|
-      if closer.close(parent_id)
-        @ancestors.pop
-      else
-        break
-      end
-    end
-  end
-
-  def example_group_started(group_notification)
-    group = group_notification.group
-    insert_testable({
-      id: group.id,
-      type: "suite",
-      label: group.description,
-      file: group.file_path,
-      line: group.metadata[:line_number].to_i,
-      children: [],
-      parent_id: group_parent_id(group),
-    })
-  end
-
-  def example_started(example_notification)
-    ex = example_notification.example
-    insert_testable({
-      id: ex.id,
-      type: "test",
-      label: ex.description,
-      file: ex.file_path,
-      line: ex.metadata[:line_number],
-      parent_id: example_parent_id(ex),
-    })
-  end
-
-  def stop(_arg)
-    dump
   end
 end
