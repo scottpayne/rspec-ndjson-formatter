@@ -1,31 +1,36 @@
 require "ndjson_formatter/version"
+require 'json'
 
 class NdjsonFormatter
   RSpec::Core::Formatters.register self, :stop, :example_started, :example_group_started
 
-  GroupCloser = Struct.new(:group_id, :callable) do
-    def close(parent_id)
-      if parent_id == group_id
-        false
-      else
-        callable.call
-        true
-      end
-    end
-  end
-
-  ExampleCloser = Struct.new(:parent_id, :callable) do
-    def close(other_parent_id)
-      if parent_id == other_parent_id
-        callable.call
-      end
-      true
-    end
-  end
-
   def initialize(io)
     @io = io
-    @ancestors = []
+    @testables = {}
+  end
+
+  def dump
+    @io.puts JSON.dump(@top_level)
+  end
+
+  def strip_parent_id(testable)
+    testable.reject { |k, _| [:parent_id].include?(k) }
+  end
+
+  def top_level?(testable)
+    testable[:parent_id].nil?
+  end
+
+  def insert_testable(testable)
+    parent_id = testable[:parent_id]
+    parentless_testable = strip_parent_id(testable)
+    if top_level?(testable)
+      dump unless @top_level.nil?
+      @top_level = parentless_testable
+    else
+      @testables[parent_id][:children] << parentless_testable
+    end
+    @testables[parentless_testable[:id]] = parentless_testable
   end
 
   def format_id(metadata)
@@ -53,50 +58,32 @@ class NdjsonFormatter
   end
 
   def example_group_started(group_notification)
-    close_all_that_need_closing(group_parent_id(group_notification.group))
-    append_closer(group_notification.group)
     group = group_notification.group
-    @io << "{"
-    @io << %("id": "#{group.id}", )
-    @io << %("type": "suite", )
-    @io << %("label": "#{group.description}", )
-    @io << %("file": "#{group.file_path}", )
-    @io << %("line": #{group.metadata[:line_number].to_i}, )
-    @io << %("children": [)
+    insert_testable({
+      id: group.id,
+      type: 'suite',
+      label: group.description,
+      file: group.file_path,
+      line: group.metadata[:line_number].to_i,
+      children: [],
+      parent_id: group_parent_id(group)
+    })
   end
 
   def example_started(example_notification)
     ex = example_notification.example
-    close_all_that_need_closing(example_parent_id(ex))
-    @ancestors.push(ExampleCloser.new(example_parent_id(ex), -> () { @io << ", " }))
-    @io << "{"
-    @io << %("id": "#{ex.id}", )
-    @io << %("type": "test", )
-    @io << %("label": "#{ex.description}", )
-    @io << %("file": "#{ex.file_path}", )
-    @io << %("line": #{ex.metadata[:line_number]} )
-    @io << "}"
+    insert_testable({
+      id: ex.id,
+      type: "test",
+      label: ex.description,
+      file: ex.file_path,
+      line: ex.metadata[:line_number],
+      parent_id: example_parent_id(ex)
+    })
   end
 
   def stop(_arg)
-    close_all_that_need_closing
+    dump
   end
 
-  private
-
-  def append_closer(group)
-    if @ancestors.empty?
-      append_top_level_group_closer(group)
-    else
-      append_nested_group_closer(group)
-    end
-  end
-
-  def append_top_level_group_closer(group)
-    @ancestors.push(GroupCloser.new(group.id, -> () { @io << "]}\n" }))
-  end
-
-  def append_nested_group_closer(group)
-    @ancestors.push(GroupCloser.new(group.id, -> () { @io << "]}" }))
-  end
 end

@@ -2,6 +2,16 @@ require "spec_helper"
 require "json"
 
 RSpec.describe NdjsonFormatter do
+  let(:example_json) do
+    {
+        "id" => "example_id",
+        "type" => "test",
+        "label" => "This is some example",
+        "file" => top_level_group.group.file_path,
+        "line" => 20,
+    }
+  end
+
   let(:output) { StringIO.new("", "w+") }
   let(:formatter) { described_class.new(output) }
 
@@ -192,7 +202,8 @@ RSpec.describe NdjsonFormatter do
 
   shared_examples "parseable JSON" do |line_number|
     it "results in a parseable JSON line of JSON at line #{line_number}" do
-      expect { JSON.parse(output.readlines[line_number - 1]) }.not_to raise_error
+      line = output.readlines[line_number - 1]
+      expect { JSON.parse(line) }.not_to raise_error, "line: #{line}"
     end
   end
 
@@ -325,6 +336,69 @@ RSpec.describe NdjsonFormatter do
         "line" => 4,
         "children" => [],
       )
+    end
+  end
+
+  context "a group with a nested group followed by an example" do
+    let(:example) do
+      double(:example_notification,
+             example: double(
+               :example,
+               id: "example_id",
+               description: "This is some example",
+               file_path: top_level_group.group.file_path,
+               metadata: {
+                 line_number: 20,
+                 example_group: top_level_group.group.metadata,
+               },
+             ))
+    end
+    let(:nested_example_group) do
+      double(:group_notification,
+             group: double(
+               :group,
+               id: "./spec/top_level_spec.rb[1:1]",
+               description: "nested",
+               file_path: "./spec/top_level_spec.rb",
+               metadata: {
+                 line_number: 4,
+                 parent_example_group: top_level_group.group.metadata,
+                 scoped_id: "1:1",
+               },
+             ))
+    end
+    let(:nested_example_group_json) do
+      {
+        "id" => "./spec/top_level_spec.rb[1:1]",
+        "type" => "suite",
+        "label" => "nested",
+        "file" => "./spec/top_level_spec.rb",
+        "line" => 4,
+        "children" => [],
+      }
+    end
+
+    def print_examples
+      formatter.example_group_started(top_level_group)
+      formatter.example_group_started(nested_example_group)
+      formatter.example_started(example)
+      formatter.stop(nil)
+      output.rewind
+    end
+
+    before { print_examples }
+
+    include_examples "n lines", 1
+    include_examples "parseable JSON", 1
+
+    it "has the nested group as the first child of the top level group" do
+      json = JSON.parse(output.gets) rescue pending("Unparseable JSON")
+      expect(json["children"][0]).to eq(nested_example_group_json)
+    end
+
+    it "has the example as the second child of the top level group" do
+      json = JSON.parse(output.gets) rescue pending("Unparseable JSON")
+      expect(json["children"][1]).to eq(example_json)
     end
   end
 end
