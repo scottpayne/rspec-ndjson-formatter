@@ -14,6 +14,15 @@ class NdjsonFormatter
     end
   end
 
+  ExampleCloser = Struct.new(:parent_id, :callable) do
+    def close(other_parent_id)
+      if parent_id == other_parent_id
+        callable.call
+      end
+      true
+    end
+  end
+
   def initialize(io)
     @io = io
     @ancestors = []
@@ -24,14 +33,18 @@ class NdjsonFormatter
     "#{metadata[:file_path]}[#{metadata[:scoped_id]}]"
   end
 
+  def example_parent_id(testable = nil)
+    format_id(testable.metadata[:example_group])
+  end
+
   def group_parent_id(testable = nil)
     return if testable.nil?
     format_id(testable.metadata[:parent_example_group])
   end
 
-  def close_all_that_need_closing(group = nil)
+  def close_all_that_need_closing(parent_id = nil)
     @ancestors.reverse.each do |closer|
-      if closer.close(group_parent_id(group))
+      if closer.close(parent_id)
         @ancestors.pop
       else
         break
@@ -40,7 +53,7 @@ class NdjsonFormatter
   end
 
   def example_group_started(group_notification)
-    close_all_that_need_closing(group_notification.group)
+    close_all_that_need_closing(group_parent_id(group_notification.group))
     append_closer(group_notification.group)
     group = group_notification.group
     @io << "{"
@@ -54,6 +67,8 @@ class NdjsonFormatter
 
   def example_started(example_notification)
     ex = example_notification.example
+    close_all_that_need_closing(example_parent_id(ex))
+    @ancestors.push(ExampleCloser.new(example_parent_id(ex), -> () { @io << ", " }))
     @io << "{"
     @io << %("id": "#{ex.id}", )
     @io << %("type": "test", )
