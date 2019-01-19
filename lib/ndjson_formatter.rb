@@ -1,5 +1,5 @@
 require "ndjson_formatter/version"
-require 'json'
+require "json"
 
 class NdjsonFormatter
   RSpec::Core::Formatters.register self, :stop, :example_started, :example_group_started
@@ -35,7 +35,7 @@ class NdjsonFormatter
 
   def format_id(metadata)
     return unless metadata
-    "#{metadata[:file_path]}[#{metadata[:scoped_id]}]"
+    "#{metadata.fetch(:file_path)}[#{metadata.fetch(:scoped_id)}]"
   end
 
   def example_parent_id(testable = nil)
@@ -61,12 +61,12 @@ class NdjsonFormatter
     group = group_notification.group
     insert_testable({
       id: group.id,
-      type: 'suite',
+      type: "suite",
       label: group.description,
       file: group.file_path,
       line: group.metadata[:line_number].to_i,
       children: [],
-      parent_id: group_parent_id(group)
+      parent_id: group_parent_id(group),
     })
   end
 
@@ -78,12 +78,11 @@ class NdjsonFormatter
       label: ex.description,
       file: ex.file_path,
       line: ex.metadata[:line_number],
-      parent_id: example_parent_id(ex)
+      parent_id: example_parent_id(ex),
     })
   end
 
   def stop(_arg)
     dump
   end
-
 end
