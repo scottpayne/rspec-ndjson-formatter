@@ -15,6 +15,8 @@ RSpec.describe NdjsonFormatter do
   let(:output) { StringIO.new("", "w+") }
   let(:formatter) { described_class.new(output) }
 
+  before { print_examples }
+
   let(:top_level_group) do
     double(:group_notification,
            group: double(
@@ -32,9 +34,12 @@ RSpec.describe NdjsonFormatter do
   end
 
   context "a top level example group" do
-    it "outputs on a new line" do
+    def print_examples
       formatter.example_group_started(top_level_group)
       formatter.stop(nil)
+    end
+
+    it "outputs on a new line" do
       output.rewind
       line = output.gets
       json = JSON.parse(line) rescue pending("Unparseable line: #{line}")
@@ -63,7 +68,8 @@ RSpec.describe NdjsonFormatter do
                  },
                ))
       end
-      before do
+
+      def print_examples
         formatter.example_group_started(top_level_group)
         formatter.example_group_started(second_top_level_group)
         formatter.stop(nil)
@@ -131,8 +137,6 @@ RSpec.describe NdjsonFormatter do
       formatter.stop(nil)
       output.rewind
     end
-
-    before { print_examples }
 
     it "only prints a single line" do
       expect(output.readlines.size).to eq(1)
@@ -229,8 +233,6 @@ RSpec.describe NdjsonFormatter do
       output.rewind
     end
 
-    before { print_examples }
-
     include_examples "n lines", 1
     include_examples "parseable JSON", 1
 
@@ -321,8 +323,6 @@ RSpec.describe NdjsonFormatter do
       output.rewind
     end
 
-    before { print_examples }
-
     include_examples "n lines", 1
     include_examples "parseable JSON", 1
 
@@ -411,8 +411,6 @@ RSpec.describe NdjsonFormatter do
       output.rewind
     end
 
-    before { print_examples }
-
     include_examples "n lines", 1
     include_examples "parseable JSON", 1
 
@@ -436,8 +434,6 @@ RSpec.describe NdjsonFormatter do
       formatter.stop(nil)
       output.rewind
     end
-
-    before { print_examples }
 
     include_examples "n lines", 1
     include_examples "parseable JSON", 1
