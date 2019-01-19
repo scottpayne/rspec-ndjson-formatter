@@ -14,7 +14,7 @@ suites. I wrote it to work with the [Test Explorer VSCode Extension](https://git
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'rspec-formatter-ndjson'
+gem 'rspec-ndjson-formatter'
 ```
 
 And then execute:
@@ -23,7 +23,7 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install rspec-formatter-ndjson
+    $ gem install rspec-ndjson-formatter
 
 ## Usage
 
