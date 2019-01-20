@@ -501,5 +501,43 @@ RSpec.describe NdjsonFormatter do
         expect(failure["backtrace"]).to eq(["line1", "line2", "line3"])
       end
     end
+
+    context "when an example is pending" do
+      let(:example_pending) do
+        double(:example_notification,
+               example: double(
+                 :example,
+                 id: "example_id",
+                 description: "This is some example",
+                 file_path: top_level_group.group.file_path,
+                 metadata: {
+                   line_number: 20,
+                   example_group: top_level_group.group.metadata,
+                 },
+                 execution_result: double(
+                   pending_message: "Not implemented yet",
+                 ),
+               ))
+      end
+
+      def print_examples
+        formatter.example_group_started(top_level_group)
+        formatter.example_started(example)
+        formatter.example_pending(example_pending)
+        formatter.stop(nil)
+        output.rewind
+      end
+
+      let(:parsed_json) { JSON.parse(output.gets) rescue pending("Unparsable JSON, fix that first") }
+      let(:pending_example) { parsed_json["children"][0] }
+
+      it "outputs a status of pending" do
+        expect(pending_example["status"]).to eq("pending")
+      end
+
+      it "outputs the pending message in the same format as a failure message" do
+        expect(pending_example["message"]).to eq(["Not implemented yet"])
+      end
+    end
   end
 end
