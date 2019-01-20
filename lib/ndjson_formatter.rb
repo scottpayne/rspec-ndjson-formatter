@@ -6,6 +6,7 @@ class NdjsonFormatter
     :stop,
     :example_started,
     :example_passed,
+    :example_failed,
     :example_group_started
 
   def initialize(io)
@@ -40,6 +41,13 @@ class NdjsonFormatter
 
   def example_passed(example_notification)
     update_testable(example_notification.example, status: "passed")
+  end
+
+  def example_failed(failed_example_notification)
+    update_testable(failed_example_notification.example,
+                    status: "failed",
+                    message: failed_example_notification.message_lines,
+                    backtrace: failed_example_notification.formatted_backtrace)
   end
 
   def stop(_arg)
