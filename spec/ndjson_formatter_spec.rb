@@ -443,4 +443,21 @@ RSpec.describe NdjsonFormatter do
       expect(parsed_json["children"][0]["children"][0]).to eq(nested_example_json)
     end
   end
+
+  context "example results" do
+    context "when an example passes" do
+      def print_examples
+        formatter.example_group_started(top_level_group)
+        formatter.example_started(example)
+        formatter.example_passed(example)
+        formatter.stop(nil)
+        output.rewind
+      end
+
+      it "outputs a status of passed" do
+        parsed_json = JSON.parse(output.gets) rescue pending("Unparsable JSON")
+        expect(parsed_json["children"][0]["status"]).to eq("passed")
+      end
+    end
+  end
 end

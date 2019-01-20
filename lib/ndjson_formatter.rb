@@ -2,7 +2,11 @@ require "ndjson_formatter/version"
 require "json"
 
 class NdjsonFormatter
-  RSpec::Core::Formatters.register self, :stop, :example_started, :example_group_started
+  RSpec::Core::Formatters.register self,
+    :stop,
+    :example_started,
+    :example_passed,
+    :example_group_started
 
   def initialize(io)
     @io = io
@@ -34,6 +38,10 @@ class NdjsonFormatter
     })
   end
 
+  def example_passed(example_notification)
+    update_testable(example_notification.example, status: "passed")
+  end
+
   def stop(_arg)
     dump
   end
@@ -62,6 +70,10 @@ class NdjsonFormatter
       @testables[parent_id][:children] << parentless_testable
     end
     @testables[parentless_testable[:id]] = parentless_testable
+  end
+
+  def update_testable(testable, attributes)
+    @testables[testable.id].merge!(attributes)
   end
 
   def format_id(metadata)
